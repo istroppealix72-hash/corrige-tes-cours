@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corrige tes cours</title>
+
+<style>
+body{font-family:Arial;background:#f4f6f9;margin:0}
+header{background:#2c3e50;color:white;padding:20px;text-align:center}
+section{background:white;margin:15px;padding:15px;border-radius:8px}
+button,input,select{width:100%;padding:10px;margin-top:8px}
+button{background:#3498db;color:white;border:none;border-radius:5px}
+#timer{color:red;font-weight:bold}
+.choice{background:#ecf0f1;padding:8px;margin-top:5px;border-radius:5px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>📘 Corrige tes cours</h1>
+<p>Quiz académique intelligent</p>
+</header>
+
+<section>
+<h2>📂 Charger questions Google Drive</h2>
+<input id="apiUrl" placeholder="URL Google Apps Script">
+<button onclick="loadDrive()">Charger</button>
+<p id="status"></p>
+</section>
+
+<section>
+<h2>⚙️ Configuration du quiz</h2>
+<select id="level">
+  <option value="facile">Facile</option>
+  <option value="moyen">Moyen</option>
+  <option value="difficile">Difficile</option>
+</select>
+<button onclick="startQuiz()">▶️ Démarrer le quiz</button>
+</section>
+
+<section>
+<h2>📝 Quiz</h2>
+<div id="timer"></div>
+<div id="quiz"></div>
+<div id="result"></div>
+</section>
+
+<script>
+let driveQ = [];
+let quizQ = [];
+let index = 0;
+let score = 0;
+let time = 15;
+let chrono;
+
+// Charger Drive
+function loadDrive(){
+  fetch(apiUrl.value)
+  .then(r=>r.json())
+  .then(data=>{
+    driveQ = data.map(q => {
+      let type = Math.random();
+      if(type < 0.33){
+        return {
+          type:"vf",
+          q:"Vrai ou Faux : " + q.q,
+          a: Math.random()>0.5?"Vrai":"Faux",
+          level:"facile"
+        };
+      }else if(type < 0.66){
+        let choices=[q.a,"Erreur","Aucune","Non défini"].sort(()=>0.5-Math.random());
+        return {
+          type:"qcm",
+          q:q.q,
+          a:q.a,
+          choices:choices,
+          level:"moyen"
+        };
+      }else{
+        return {
+          type:"simple",
+          q:q.q,
+          a:q.a,
+          level:"difficile"
+        };
+      }
+    });
+    status.innerText = "✅ Questions chargées";
+  });
+}
+
+// Démarrer quiz
+function startQuiz(){
+  let lvl = level.value;
+  quizQ = driveQ.filter(q=>q.level===lvl).sort(()=>0.5-Math.random());
+  if(quizQ.length===0){alert("Aucune question");return;}
+  index=0; score=0;
+  next();
+}
+
+// Question suivante
+function next(){
+  if(index>=quizQ.length){
+    quiz.innerHTML="";
+    timer.innerHTML="";
+    result.innerHTML=`🎉 Score final : ${score}/${quizQ.length}`;
+    return;
+  }
+  time=15;
+  let q = quizQ[index];
+  let html = `<p><b>${q.q}</b></p>`;
+
+  if(q.type==="vf"){
+    html+=`<div class="choice" onclick="check('Vrai')">Vrai</div>
+           <div class="choice" onclick="check('Faux')">Faux</div>`;
+  }
+  else if(q.type==="qcm"){
+    q.choices.forEach(c=>{
+      html+=`<div class="choice" onclick="check('${c}')">${c}</div>`;
+    });
+  }
+  else{
+    html+=`<input id="rep"><button onclick="check(rep.value)">Valider</button>`;
+  }
+
+  quiz.innerHTML=html;
+  startTimer();
+}
+
+function startTimer(){
+  timer.innerText="⏱️ 15s";
+  clearInterval(chrono);
+  chrono=setInterval(()=>{
+    time--;
+    timer.innerText="⏱️ "+time+"s";
+    if(time===0){
+      clearInterval(chrono);
+      index++; next();
+    }
+  },1000);
+}
+
+function check(val){
+  clearInterval(chrono);
+  if(val===quizQ[index].a) score++;
+  index++; next();
+}
+</script>
+
+</body>
+  </html>
